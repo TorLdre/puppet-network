@@ -5,6 +5,7 @@ define network::nm::connection(
   String $connection_type = 'ethernet',
   String $interface_name = $name,
   String $autoconnect = 'true',
+  Optional[Hash] $bond_slave = undef,
   Optional[String] $controller = undef,
   Optional[String] $port_type = 'bridge',
   Hash $bond = {},
@@ -35,20 +36,36 @@ define network::nm::connection(
   }
 
   if $ensure == 'present' {
-    $settings = {
-      'connection' => {
-        'uuid' => $uuid,
-        'id' => $id,
-        'interface-name' => $interface_name,
-        'type' => $connection_type,
-        'autoconnect' => $autoconnect
-      },
-      'ethernet'  => $ethernet,
-      'bond'      => $bond,
-      'bond-port' => $bond_port,
-      'ipv4'      => $ipv4,
-      'ipv6'      => $ipv6,
-      'vlan'      => $vlan
+    if ! $bond_slave {
+      $settings = {
+        'connection' => {
+          'uuid' => $uuid,
+          'id' => $id,
+          'interface-name' => $interface_name,
+          'type' => $connection_type,
+          'autoconnect' => $autoconnect
+        },
+        'ethernet'  => $ethernet,
+        'bond'      => $bond,
+        'ipv4'      => $ipv4,
+        'ipv6'      => $ipv6,
+        'vlan'      => $vlan
+      }
+    } else {
+      $settings_slave = {
+        'connection' => $bond_slave,
+        'ethernet'   => $ethernet,
+        'bond-port'  => $bond_port
+      }
+      $settings_if = {
+        'connection' => {
+          'uuid' => $uuid,
+          'id' => $id,
+          'autoconnect' => $autoconnect,
+          'type' => $connection_type
+        }
+      }
+      $settings = deep_merge($settings_if, $settings_slave)
     }
     if $controller {
       $settings_controller = {
